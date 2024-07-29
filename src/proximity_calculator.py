@@ -15,6 +15,15 @@ class ProximityCalculator:
             {'id':'x', 'edges':{'1':0.3, '3':0.5,'2':0.55}}
         ]
 
+
+    def build_distances_graph(self)->None:
+        # This method needs to construct a similar graph to the one at the top
+        # From a list of nodes and a list of vertices
+        # Vertices in this context will mean the O points
+        # and Nodes will refer to the X points
+        
+        
+        pass
     
     def calculate_proximity(self, node:tuple, index):
         vertex , dist, ind = node
