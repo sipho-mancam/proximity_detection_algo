@@ -10,9 +10,10 @@ class ProximityCalculator:
         self.__selected_indices = []
 
         self.__graph = [
-            {'id':'z', 'edges':{'2':0.15, '3':0.2, '1':0.7}},
-            {'id':'y', 'edges':{'2':0.20, '3':0.25, '1':0.56}},
-            {'id':'x', 'edges':{'1':0.3, '3':0.5,'2':0.55}}
+            {'id':'y', 'edges':{'2':0.20, '3':0.25, '1':0.56, '4':0.8}},
+            {'id':'x', 'edges':{'1':0.3, '3':0.5,'2':0.55, '4':0.7}},
+            {'id':'A', 'edges':{'4':0.01, '2':0.16, '3':0.25, '1':0.8}},
+            {'id':'z', 'edges':{'4':0.02, '2':0.15, '3':0.2, '1':0.7}}
         ]
 
 
@@ -21,9 +22,8 @@ class ProximityCalculator:
         # From a list of nodes and a list of vertices
         # Vertices in this context will mean the O points
         # and Nodes will refer to the X points
-        
-        
         pass
+    
     
     def calculate_proximity(self, node:tuple, index):
         vertex , dist, ind = node
