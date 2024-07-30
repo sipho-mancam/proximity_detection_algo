@@ -1,35 +1,176 @@
 import pprint
+import numpy as np
 
+
+class Point:
+    def __init__(self, x:float, y:float, typ:str, radius:int,  color:tuple=(255, 0, 0), id=0)->None:
+        self.__x = x
+        self.__y = y
+        self.__color = color
+        self.__type = typ
+        self.__radii = radius
+        self.__id = id
+
+    @property
+    def id(self)->int:
+        return self.__id
+    
+    @id.setter
+    def id(self, id)->None:
+        self.__id = id
+
+    @property
+    def x(self)->float:
+        return self.__x
+    
+    @x.setter
+    def x(self, x)->float:
+        if 0 <= x <= 1:
+            self.__x = x
+
+    @property
+    def y(self)->float:
+        return self.__y
+    
+    @y.setter
+    def y(self, y)->None:
+        if 0 <= y <= 1:
+            self.__y  = y
+
+    @property
+    def marker(self)->str:
+        return str(self.__type)
+    
+    @marker.setter
+    def marker(self, marker)->None:
+        self.__type = marker
+        
+    
+    @property
+    def color(self)->tuple:
+        return self.__color
+    
+    @color.setter
+    def color(self, color:tuple)->None:
+        if type(color) is tuple:
+            self.__color = color
+
+    @property
+    def radius(self)->int:
+        return self.__radii
+    
+    @radius.setter
+    def radius(self, r:int)->None:
+        self.__radii = r
+    
 
 class ProximityCalculator:
     def __init__(self, x_list:list, o_list:list)->None:
         self.__x_list = x_list
         self.__o_list = o_list
-
         self.__selected_vertices = []
         self.__selected_indices = []
 
         self.__graph = [
-            {'id':'y', 'edges':{'2':0.20, '3':0.25, '1':0.56, '4':0.8}},
-            {'id':'x', 'edges':{'1':0.3, '3':0.5,'2':0.55, '4':0.7}},
-            {'id':'A', 'edges':{'4':0.01, '2':0.16, '3':0.25, '1':0.8}},
-            {'id':'z', 'edges':{'4':0.02, '2':0.15, '3':0.2, '1':0.7}}
+            # {'id':'X', 'edges':{'1':0.3,  '3':0.5,  '2':0.55, '4':0.7}},
+            # {'id':'Y', 'edges':{'2':0.20, '3':0.25, '1':0.56, '4':0.8}},
+            # {'id':'Z', 'edges':{'4':0.02, '2':0.15, '3':0.2,  '1':0.7}},
+            # {'id':'A', 'edges':{'4':0.01, '2':0.16, '3':0.25, '1':0.8}}
         ]
+    
+
+    def __build_point_vector(self, point:Point, size)->np.ndarray:
+        return np.array([
+                                [point.x for _ in range(size)],
+                                [point.y for _ in range(size)]
+                            ], dtype=np.float64)
+
+    def __build_o_vector(self, o_list=None)->np.ndarray:
+        if o_list is None:
+            return np.array([[point.x for point in self.__o_list],
+                             [point.y for point in self.__o_list]],
+                               dtype=np.float64)
+        return np.array([
+                            [point.x for point in o_list],
+                            [point.y for point in o_list]
+                        ], dtype=np.float64)
+
+
+    
+    def test(self)->None:
+        self.build_distances_graph()
+        self.run()
+
+    def __calculate_distances(self, point)->np.ndarray:
+        xy_vector = self.__build_point_vector(point, len(self.__o_list))
+        xy_o_list = self.__build_o_vector()
+        return np.sqrt(np.power(xy_vector[0]-xy_o_list[0], 2)+np.power(xy_vector[1]-xy_o_list[1], 2))
 
 
     def build_distances_graph(self)->None:
         # This method needs to construct a similar graph to the one at the top
         # From a list of nodes and a list of vertices
         # Vertices in this context will mean the O points
-        # and Nodes will refer to the X points
-        pass
+        # and Nodes will refer to the X points        
+        for x_point in self.__x_list:
+            node = {'id':x_point.id, 'edges':{}}
+            point_distances = self.__calculate_distances(x_point)
+            for idx, edget_distance in enumerate(point_distances):
+               o_point = self.__o_list[idx]
+               node['edges'][str(o_point.id)+'A'] = float(edget_distance)
+            self.__graph.append(node)
+        
+        # pprint.pprint(self.__graph)
     
+    def __build_stack(self, vertex, dist,  current_index)->list:
+        res = [(dist, current_index)]
+        for idx, elem in enumerate(self.__graph):
+            if not elem.get('selected'):
+                d2 = elem['edges'][vertex]
+                if d2 < dist:
+                    res.append((d2, idx))  
+        return sorted(res, key=lambda a : a[0])
     
-    def calculate_proximity(self, node:tuple, index):
+    def __proximity_calculator(self, index, ck=0, lkt={})->list[tuple]: # this returns a tuple of (ID, Vertex) of all assigned IDs
+        if index >= len(self.__graph):
+            return []
+
+        current_node = self.__graph[index]
+        current_key = ck
+        keys = list(current_node['edges'].keys())
+        lookup = lkt
+
+        if ck >= len(keys):
+            return []
+      
+        vertex = keys[current_key]
+        dist = current_node['edges'][keys[current_key]]
+        stack = self.__build_stack(vertex, dist, index)
+
+        # Check, if I'm at the top of the stack, cause, if that's the case then I'm the closest
+        if stack[0][1] == index:
+            self.__graph[index]['selected'] = True
+            lookup[vertex] = True
+            return [(index, vertex)]
+        
+        # At this point we are doubting that I'm the closest, we want to know if I'm the best candidate
+        dist , ind = stack[0]
+        res = self.__proximity_calculator(ind, lkt=lookup)
+        if  lookup.get(vertex):
+            r1 =  self.__proximity_calculator(index, ck+1, lookup)
+            res.extend(r1)
+            return res
+        else:
+            res.append((index, vertex))
+            lookup[vertex]=True
+            return res
+
+       
+    
+    def calculate_proximity(self, node:tuple, index, res_list={}):
         vertex , dist, ind = node
         if index == len(self.__graph):
-            return (vertex, dist, ind)
-        
+            return (vertex, dist, ind)  
         current_pointer = self.__graph[index]['edges']
         keys = list(current_pointer.keys())
         if keys[0] != vertex or current_pointer[keys[0]] > dist or (self.__graph[index].get('selected') is not None and self.__graph[index].get('selected')):
@@ -40,36 +181,23 @@ class ProximityCalculator:
 
         
     def run(self)->None:
-        current_pointer = 0 # The current index on the list
-        current_key = 0 # for the selected index, current key
-
-        while len(self.__selected_vertices) < len(self.__graph):
-            node = self.__graph[current_pointer]
-            edges = list(node['edges'].keys())
-
-            if edges[current_key] in self.__selected_indices:
-                current_key += 1
-                continue
-
-            res = self.calculate_proximity((edges[current_key], node['edges'][edges[current_key]], current_pointer), current_pointer+1)
-            vert, dist, ind = res
-            self.__graph[ind]['selected'] = True
-            self.__graph[ind]['vertex'] = vert
-            self.__selected_indices.append(vert)
-            self.__selected_vertices.append(ind)
+        current_index = 0
+        while current_index < len(self.__graph):
+            results = self.__proximity_calculator(current_index, 0, {})
+            for res in results:
+                index, vertex = res
+                self.__selected_indices.append(index)
+                self.__selected_vertices.append(vertex)
+                self.__graph[index]['vertex'] = vertex
             
-            if ind == current_pointer:
-                current_pointer += 1
-                if current_key > 0:
-                    current_key = 0
-            else:
-                current_key += 1
+            current_index += 1
+            while current_index in self.__selected_indices:
+                current_index += 1
 
-        print(self.__graph)
+        pprint.pprint(self.__graph)
+        # return
 
 
-        
-
-res = ProximityCalculator(None, None)
-
-res.run()
+if __name__ == "__main__":        
+    res = ProximityCalculator(None, None)
+    res.run()

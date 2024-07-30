@@ -6,59 +6,8 @@ import sys
 import os
 from pathlib import Path
 import numpy as np
+from proximity_calculator import Point, ProximityCalculator
 
-class Point:
-    def __init__(self, x:float, y:float, typ:str, radius:int,  color:tuple=(255, 0, 0))->None:
-        self.__x = x
-        self.__y = y
-        self.__color = color
-        self.__type = typ
-        self.__radii = radius
-
-    @property
-    def x(self)->float:
-        return self.__x
-    
-    @x.setter
-    def x(self, x)->float:
-        if 0 <= x <= 1:
-            self.__x = x
-
-    @property
-    def y(self)->float:
-        return self.__y
-    
-    @y.setter
-    def y(self, y)->None:
-        if 0 <= y <= 1:
-            self.__y  = y
-
-    @property
-    def marker(self)->str:
-        return str(self.__type)
-    
-    @marker.setter
-    def marker(self, marker)->None:
-        self.__type = marker
-        
-    
-    @property
-    def color(self)->tuple:
-        return self.__color
-    
-    @color.setter
-    def color(self, color:tuple)->None:
-        if type(color) is tuple:
-            self.__color = color
-
-    @property
-    def radius(self)->int:
-        return self.__radii
-    
-    @radius.setter
-    def radius(self, r:int)->None:
-        self.__radii = r
-    
 
 class RenderMap(QLabel):
     def __init__(self, parent=None)->None:
@@ -78,18 +27,33 @@ class RenderMap(QLabel):
         y_rand = np.random.random_sample(count*2)
         ite = 0
         self.__points = []
-        
+        uid = count + 10
         for x, y in zip(x_rand, y_rand):
             if ite%2 == 0:
                 t = f'{ite//2}'
                 color = (255, 0, 0)
             else:
-                t = 'O'
+                t = "O"
                 color = (0, 0, 255)
 
             ite += 1
-            self.__points.append(Point(x, y, t, 10, color))
+            self.__points.append(Point(x, y, t, 10, color, uid))
+            uid += 1
+        
+        x_p, y_p = self.__seperate_points()
+        pc = ProximityCalculator(x_p, y_p)
+        pc.test()
 
+    def __seperate_points(self)->tuple[list[Point]]:
+        x_points = []
+        o_points = []
+        s = 'o'
+        for point in self.__points:
+            if point.marker.lower() == s:
+                o_points.append(point)
+            else:
+                x_points.append(point)
+        return x_points, o_points
 
     def rerender_image(self)->None:
         h , w, d = self.__rendering_image.shape
