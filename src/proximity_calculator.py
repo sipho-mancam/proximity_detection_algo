@@ -1,6 +1,7 @@
 import pprint
 import numpy as np
 import json
+import time
 
 class Point:
     def __init__(self, x:float, y:float, typ:str, radius:int,  color:tuple=(255, 0, 0), id=0)->None:
@@ -102,9 +103,13 @@ class ProximityCalculator:
         
     
     def test(self)->None:
+        start_time = time.time()
         self.build_distances_graph()
         self.run()
+        end_time = time.time()
         self.write_to_json()
+        proc_time = round((end_time - start_time)*1000, 2)
+        print(f"Testing Time ProximityCalculation is: {proc_time} ms")
 
         # pprint.pprint(self.__graph)
 
@@ -122,7 +127,7 @@ class ProximityCalculator:
         for x_point in self.__x_list:
             node = {'id':x_point.id, 'edges':{}}
             edges = {}
-            point_distances = self.__calculate_distances(x_point)
+            point_distances = self.__calculate_distances(x_point) # n^2
             for idx, edget_distance in enumerate(point_distances):
                o_point = self.__o_list[idx]
                edges[str(o_point.id)+'A'] = float(edget_distance)
@@ -132,7 +137,6 @@ class ProximityCalculator:
             node['edges'] = edges
             self.__graph.append(node)
         
-        # pprint.pprint(self.__graph)
     
     def __build_stack(self, vertex, dist,  current_index)->list:
         res = [(dist, current_index)]
