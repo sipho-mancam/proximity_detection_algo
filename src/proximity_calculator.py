@@ -1,6 +1,6 @@
 import pprint
 import numpy as np
-
+import json
 
 class Point:
     def __init__(self, x:float, y:float, typ:str, radius:int,  color:tuple=(255, 0, 0), id=0)->None:
@@ -95,11 +95,18 @@ class ProximityCalculator:
                             [point.y for point in o_list]
                         ], dtype=np.float64)
 
-
+    def write_to_json(self)->None:
+        path = "debug.json"
+        with open(path, 'w') as fp:
+            json.dump(self.__graph, fp)
+        
     
     def test(self)->None:
         self.build_distances_graph()
         self.run()
+        self.write_to_json()
+
+        # pprint.pprint(self.__graph)
 
     def __calculate_distances(self, point)->np.ndarray:
         xy_vector = self.__build_point_vector(point, len(self.__o_list))
@@ -114,10 +121,15 @@ class ProximityCalculator:
         # and Nodes will refer to the X points        
         for x_point in self.__x_list:
             node = {'id':x_point.id, 'edges':{}}
+            edges = {}
             point_distances = self.__calculate_distances(x_point)
             for idx, edget_distance in enumerate(point_distances):
                o_point = self.__o_list[idx]
-               node['edges'][str(o_point.id)+'A'] = float(edget_distance)
+               edges[str(o_point.id)+'A'] = float(edget_distance)
+
+            intem = sorted(edges.items(), key=lambda kv : kv[1])
+            edges = dict(intem)
+            node['edges'] = edges
             self.__graph.append(node)
         
         # pprint.pprint(self.__graph)
@@ -142,8 +154,21 @@ class ProximityCalculator:
 
         if ck >= len(keys):
             return []
-      
+        
+        # Try and find an unused key to start from
         vertex = keys[current_key]
+        while True:
+            if lookup.get(vertex) is not None: # The Vertex has been used
+                current_key += 1
+                if current_key >= len(keys):
+                    return []
+            else:
+                vertex = keys[current_key]
+                break
+                
+            vertex = keys[current_key]
+
+
         dist = current_node['edges'][keys[current_key]]
         stack = self.__build_stack(vertex, dist, index)
 
@@ -157,10 +182,11 @@ class ProximityCalculator:
         dist , ind = stack[0]
         res = self.__proximity_calculator(ind, lkt=lookup)
         if  lookup.get(vertex):
-            r1 =  self.__proximity_calculator(index, ck+1, lookup)
+            r1 =  self.__proximity_calculator(index, current_key+1, lookup)
             res.extend(r1)
             return res
         else:
+            self.__graph[index]['selected'] = True
             res.append((index, vertex))
             lookup[vertex]=True
             return res
@@ -182,8 +208,9 @@ class ProximityCalculator:
         
     def run(self)->None:
         current_index = 0
+        lookup = {}
         while current_index < len(self.__graph):
-            results = self.__proximity_calculator(current_index, 0, {})
+            results = self.__proximity_calculator(current_index, 0, lookup)
             for res in results:
                 index, vertex = res
                 self.__selected_indices.append(index)
@@ -194,7 +221,7 @@ class ProximityCalculator:
             while current_index in self.__selected_indices:
                 current_index += 1
 
-        pprint.pprint(self.__graph)
+        # print(self.__graph)
         # return
 
 
