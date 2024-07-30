@@ -11,6 +11,15 @@ class Point:
         self.__type = typ
         self.__radii = radius
         self.__id = id
+        self.__extras = {}
+
+    @property
+    def extras(self)->dict:
+        return self.__extras
+    
+    @extras.setter
+    def extras(self, kv:tuple)->None:
+        self.__extras[kv[0]] = kv[1]
 
     @property
     def id(self)->int:
@@ -78,6 +87,28 @@ class ProximityCalculator:
             # {'id':'Z', 'edges':{'4':0.02, '2':0.15, '3':0.2,  '1':0.7}},
             # {'id':'A', 'edges':{'4':0.01, '2':0.16, '3':0.25, '1':0.8}}
         ]
+
+    
+    def __associate_points(self)->None:
+        # Associates nodes from state 1 to nodes on state 2
+        for node in self.__graph:
+            id = node.get('id')
+            for point in self.__x_list:
+                if point.id == id:
+                    point.extras = ('vertex', node.get('vertex'))
+                    break
+
+        for point in self.__x_list:
+            extras = point.extras
+            id = extras.get('vertex')
+            if id is not None:
+                for o_point in self.__o_list:
+                    if o_point.id == id:
+                        o_point.marker = point.marker
+                        break
+
+    def get_associated_points(self)->tuple:
+        return self.__x_list, self.__o_list
     
 
     def __build_point_vector(self, point:Point, size)->np.ndarray:
@@ -106,12 +137,12 @@ class ProximityCalculator:
         start_time = time.time()
         self.build_distances_graph()
         self.run()
+        self.__associate_points()
         end_time = time.time()
         self.write_to_json()
         proc_time = round((end_time - start_time)*1000, 2)
         print(f"Testing Time ProximityCalculation is: {proc_time} ms")
 
-        # pprint.pprint(self.__graph)
 
     def __calculate_distances(self, point)->np.ndarray:
         xy_vector = self.__build_point_vector(point, len(self.__o_list))
@@ -130,7 +161,7 @@ class ProximityCalculator:
             point_distances = self.__calculate_distances(x_point) # n^2
             for idx, edget_distance in enumerate(point_distances):
                o_point = self.__o_list[idx]
-               edges[str(o_point.id)+'A'] = float(edget_distance)
+               edges[o_point.id] = float(edget_distance)
 
             intem = sorted(edges.items(), key=lambda kv : kv[1])
             edges = dict(intem)
@@ -168,10 +199,8 @@ class ProximityCalculator:
                     return []
             else:
                 vertex = keys[current_key]
-                break
-                
+                break     
             vertex = keys[current_key]
-
 
         dist = current_node['edges'][keys[current_key]]
         stack = self.__build_stack(vertex, dist, index)
@@ -194,22 +223,7 @@ class ProximityCalculator:
             res.append((index, vertex))
             lookup[vertex]=True
             return res
-
-       
-    
-    def calculate_proximity(self, node:tuple, index, res_list={}):
-        vertex , dist, ind = node
-        if index == len(self.__graph):
-            return (vertex, dist, ind)  
-        current_pointer = self.__graph[index]['edges']
-        keys = list(current_pointer.keys())
-        if keys[0] != vertex or current_pointer[keys[0]] > dist or (self.__graph[index].get('selected') is not None and self.__graph[index].get('selected')):
-            return self.calculate_proximity((vertex, dist, ind), index+1)
-        elif current_pointer[keys[0]] < dist:
-            return self.calculate_proximity((keys[0], current_pointer[keys[0]], index), index+1)
-       
-
-        
+          
     def run(self)->None:
         current_index = 0
         lookup = {}
@@ -224,9 +238,6 @@ class ProximityCalculator:
             current_index += 1
             while current_index in self.__selected_indices:
                 current_index += 1
-
-        # print(self.__graph)
-        # return
 
 
 if __name__ == "__main__":        

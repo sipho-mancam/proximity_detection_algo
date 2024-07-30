@@ -43,6 +43,12 @@ class RenderMap(QLabel):
         x_p, y_p = self.__seperate_points()
         pc = ProximityCalculator(x_p, y_p)
         pc.test()
+        x_p, y_p = pc.get_associated_points()
+
+        self.__points = []
+        self.__points.extend(x_p)
+        self.__points.extend(y_p)
+
 
     def __seperate_points(self)->tuple[list[Point]]:
         x_points = []
@@ -88,6 +94,10 @@ class RenderMap(QLabel):
             self.__rendering_image = cv.putText(self.__rendering_image, point.marker, 
                                                 (x-r, y+r//2), 
                                                 cv.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1)
+            
+            self.__rendering_image = cv.putText(self.__rendering_image, str(point.id), 
+                                                (x-r*3, y-r), 
+                                                cv.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 0), 1)
             
 
     def update_frame(self)->None:
